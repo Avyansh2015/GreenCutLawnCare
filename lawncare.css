@@ -1,0 +1,366 @@
+/* =========================
+   RESET
+========================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.site-title {
+    text-align: center;
+    font-size: 48px;
+    font-weight: 800;
+    color: #2e7d32; /* lawn green */
+    margin: 20px 0;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.15);
+}
+/* =========================
+   BODY
+========================= */
+
+body {
+  background: #e8f5e9; /* soft grass background */
+  color: #1b3b1b;
+}
+
+/* =========================
+   NAVIGATION
+========================= */
+
+nav {
+  background: #2e7d32; /* deep lawn green */
+  color: white;
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+nav h2 {
+  color: #c8e6c9;
+  font-size: 28px;
+}
+
+nav span {
+  color: #ffeb3b; /* sunlight yellow accent */
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 25px;
+}
+
+nav ul li {
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+nav ul li:hover {
+  color: #a5d6a7;
+}
+
+/* =========================
+   HERO SECTION
+========================= */
+
+.hero {
+  padding: 70px 20px;
+  text-align: center;
+  background: linear-gradient(
+    to right,
+    #4caf50,
+    #66bb6a,
+    #81c784,
+    #a5d6a7
+  );
+  color: white;
+}
+
+.hero h1 {
+  font-size: 52px;
+  margin-bottom: 15px;
+}
+
+.hero h3 {
+  font-size: 22px;
+  font-weight: normal;
+}
+
+/* =========================
+   MAIN SECTION
+========================= */
+
+.section {
+  padding: 50px 30px;
+}
+
+.section h2 {
+  text-align: center;
+  margin-bottom: 40px;
+  color: #2e7d32;
+  font-size: 40px;
+}
+
+/* =========================
+   SERVICE HEADINGS
+========================= */
+
+.service-title {
+  text-align: center;
+  color: #1b5e20;
+  font-size: 34px;
+  margin-top: 50px;
+  margin-bottom: 25px;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+}
+
+/* =========================
+   SERVICE CARDS GRID
+========================= */
+
+.products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 25px;
+  margin-bottom: 40px;
+}
+
+/* =========================
+   APPOINTMENT CARDS
+========================= */
+
+.card {
+  background: #c8e6c9;
+  color: #1b3b1b;
+  padding: 20px;
+  border-radius: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  transition: 0.3s;
+  border: 2px solid #81c784;
+}
+
+.card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+.circle {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: linear-gradient(
+    to right,
+    #2e7d32,
+    #43a047,
+    #66bb6a,
+    #a5d6a7
+  );
+}
+
+.card h3 {
+  color: #2e7d32;
+  margin: 10px 0;
+  font-size: 22px;
+}
+
+.price {
+  font-size: 22px;
+  font-weight: bold;
+  color: #6d4c41; /* earthy brown */
+  margin-bottom: 15px;
+}
+
+.card button {
+  background: #2e7d32;
+  border: none;
+  color: white;
+  font-weight: bold;
+  padding: 10px 22px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.card button:hover {
+  background: #1b5e20;
+  transform: scale(1.05);
+}
+
+/* =========================
+   APPOINTMENT CART
+========================= */
+
+.cart {
+  background: #a5d6a7;
+  width: 350px;
+  margin: 40px auto;
+  padding: 25px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.cart h3 {
+  text-align: center;
+  color: #1b3b1b;
+  margin-bottom: 15px;
+}
+
+#cartItems {
+  list-style: none;
+  margin-bottom: 15px;
+}
+
+#cartItems li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
+}
+
+.total {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #1b3b1b;
+}
+
+/* =========================
+   BOOKING FORM
+========================= */
+
+.form-box {
+  background: #c8e6c9;
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+  border-radius: 25px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  border: 2px solid #81c784;
+}
+
+.form-box h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #1b5e20;
+}
+
+.form-box input,
+.form-box textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #81c784;
+  border-radius: 12px;
+  font-size: 16px;
+  background: #f1f8e9;
+}
+
+.form-box textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.form-box button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 25px;
+  background: #2e7d32;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.form-box button:hover {
+  background: #1b5e20;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+footer {
+  text-align: center;
+  padding: 30px;
+  color: white;
+  font-weight: bold;
+  margin-top: 40px;
+  background: #2e7d32;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 768px) {
+
+  nav {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  nav ul {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .hero h3 {
+    font-size: 18px;
+  }
+
+  .section h2 {
+    font-size: 30px;
+  }
+
+  .service-title {
+    font-size: 28px;
+  }
+
+  .cart {
+    width: 90%;
+  }
+}
+.service-dropdown {
+  margin-bottom: 25px;
+}
+
+.service-dropdown summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.service-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.service-title {
+  user-select: none;
+}
+
+.service-dropdown[open] .service-title {
+  background: #a5d6a7;
+  transform: scale(1.01);
+  transition: 0.2s;
+}
+
+.service-dropdown .service-title::after {
+  content: " ▼";
+  float: right;
+}
+
+.service-dropdown[open] .service-title::after {
+  content: " ▲";
+}
