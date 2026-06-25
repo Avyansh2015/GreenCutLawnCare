@@ -1,9 +1,6 @@
 // ==========================================
-// 1. FIREBASE SETUP (Put this at the very top)
+// 1. FIREBASE SETUP
 // ==========================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyDXeGxGSOwIIw-IQjUCCBXzaBMckeUh64c",
   authDomain: "green-cut-lawn-care.firebaseapp.com",
@@ -14,17 +11,39 @@ const firebaseConfig = {
   measurementId: "G-JE2ZX4NC5S"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const bookedSlotsDocRef = doc(db, "bookings", "unavailableSlots");
+let db = null;
+let bookedSlotsDocRef = null;
+let firebaseReady = false;
+let firebaseError = null;
 
+async function initializeFirebase() {
+  try {
+    const [{ initializeApp }, { getFirestore, doc, setDoc, onSnapshot }] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js")
+    ]);
+
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    bookedSlotsDocRef = doc(db, "bookings", "unavailableSlots");
+    firebaseReady = true;
+
+    return { setDoc, onSnapshot };
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+    firebaseError = error;
+    return null;
+  }
+}
+
+const firebaseInitPromise = initializeFirebase();
+const STORAGE_KEY = "greenCutBookedSlots";
 let globalBookedSlots = [];
 
 // ==========================================
-// 2. YOUR ORIGINAL LOGIC (With Firebase Hooks)
+// 2. BOOKING LOGIC
 // ==========================================
 document.addEventListener("DOMContentLoaded", function () {
-
   const buttons = document.querySelectorAll(".card button");
   const cartItems = document.getElementById("cartItems");
   const totalDisplay = document.querySelector(".total");
@@ -32,43 +51,88 @@ document.addEventListener("DOMContentLoaded", function () {
   let total = 0;
 
   function updateTotal() {
-    totalDisplay.textContent = `Total: $${total}`;
+    if (totalDisplay) {
+      totalDisplay.textContent = `Total: $${total}`;
+    }
   }
 
-  // Live database checker: instantly disables slot buttons if they are booked out
-  onSnapshot(bookedSlotsDocRef, (snapshot) => {
-    globalBookedSlots = snapshot.exists() ? (snapshot.data().slots || []) : [];
-    
+  function loadLocalBookedSlots() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        globalBookedSlots = JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error("Could not read saved bookings:", error);
+      globalBookedSlots = [];
+    }
+  }
+
+  function saveLocalBookedSlots() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(globalBookedSlots));
+  }
+
+  function updateButtonStates() {
     buttons.forEach((button) => {
       const card = button.parentElement;
-      const title = card.querySelector("h3").textContent.trim();
-      
+      const title = card?.querySelector("h3")?.textContent?.trim() || "";
+
       if (globalBookedSlots.includes(title)) {
         button.textContent = "Booked Out";
         button.disabled = true;
         button.style.background = "#555";
         button.style.cursor = "not-allowed";
+      } else {
+        button.textContent = "Add Appointment";
+        button.disabled = false;
+        button.style.background = "";
+        button.style.cursor = "pointer";
       }
     });
+  }
+
+  loadLocalBookedSlots();
+  updateButtonStates();
+
+  firebaseInitPromise.then((firebaseModules) => {
+    if (firebaseModules && bookedSlotsDocRef) {
+      const { onSnapshot } = firebaseModules;
+      onSnapshot(
+        bookedSlotsDocRef,
+        (snapshot) => {
+          const remoteSlots = snapshot.exists() ? (snapshot.data().slots || []) : [];
+          globalBookedSlots = [...new Set([...globalBookedSlots, ...remoteSlots])];
+          saveLocalBookedSlots();
+          updateButtonStates();
+        },
+        (error) => {
+          console.error("Firestore listener failed:", error);
+          firebaseReady = false;
+          updateButtonStates();
+        }
+      );
+    }
   });
 
   buttons.forEach((button) => {
-    button.addEventListener("click", function () {
-
+    button.addEventListener("click", async function () {
       const card = button.parentElement;
-
-      const title = card.querySelector("h3").textContent;
-      const priceText = card.querySelector(".price").textContent;
+      const title = card?.querySelector("h3")?.textContent?.trim() || "";
+      const priceText = card?.querySelector(".price")?.textContent || "$0";
       const price = parseFloat(priceText.replace("$", ""));
 
-      const li = document.createElement("li");
+      if (!title) return;
 
+      if (globalBookedSlots.includes(title)) {
+        return;
+      }
+
+      const li = document.createElement("li");
       const text = document.createElement("span");
       text.textContent = `${title} - $${price}`;
 
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "Remove";
-
       removeBtn.style.marginLeft = "10px";
       removeBtn.style.background = "#c62828";
       removeBtn.style.color = "white";
@@ -85,22 +149,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
       li.appendChild(text);
       li.appendChild(removeBtn);
-
       cartItems.appendChild(li);
 
       total += price;
       updateTotal();
 
-      button.textContent = "Added!";
-      button.disabled = true;
+      globalBookedSlots.push(title);
+      saveLocalBookedSlots();
+      updateButtonStates();
 
-      setTimeout(() => {
-        // Only reset text if it hasn't been globally booked out in the meantime
-        if (!globalBookedSlots.includes(title.trim())) {
-          button.textContent = "Add Appointment";
-          button.disabled = false;
+      const firebaseModules = await firebaseInitPromise;
+      if (firebaseModules && bookedSlotsDocRef) {
+        try {
+          await firebaseModules.setDoc(bookedSlotsDocRef, { slots: [...new Set(globalBookedSlots)] }, { merge: true });
+        } catch (error) {
+          console.error("Firebase save failed:", error);
+          firebaseReady = false;
+          updateButtonStates();
         }
-      }, 1000);
+      }
     });
   });
 
@@ -110,11 +177,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (form) {
     form.addEventListener("submit", async function (event) {
-      // 1. Gather all selections for Formspree email
       const items = document.querySelectorAll("#cartItems li");
-      let appointments = [];
+      const appointments = [];
 
-      items.forEach(item => {
+      items.forEach((item) => {
         const span = item.querySelector("span");
         if (span) {
           appointments.push(span.textContent.trim());
@@ -132,21 +198,25 @@ document.addEventListener("DOMContentLoaded", function () {
         totalField.value = totalDisplay.textContent;
       }
 
-      // 2. Push selections to Firebase to book them out permanently
       if (appointments.length > 0) {
-        event.preventDefault(); // Pause Formspree submit momentarily
+        event.preventDefault();
 
-        // Isolate just the day and time text (e.g., "Saturday 8:00 AM")
-        const newBookings = appointments.map(str => str.split(" - ")[0].trim());
-        const updatedTotalSlots = [...new Set([...globalBookedSlots, ...newBookings])];
+        const newBookings = appointments.map((str) => str.split(" - ")[0].trim());
+        globalBookedSlots = [...new Set([...globalBookedSlots, ...newBookings])];
+        saveLocalBookedSlots();
+        updateButtonStates();
 
-        try {
-          await setDoc(bookedSlotsDocRef, { slots: updatedTotalSlots }, { merge: true });
-          form.submit(); // Database updated successfully! Now send Formspree mail
-        } catch (error) {
-          console.error("Firebase Error: ", error);
-          form.submit(); // Fallback to make sure form sends anyway if DB lags
+        const firebaseModules = await firebaseInitPromise;
+        if (firebaseModules && bookedSlotsDocRef) {
+          try {
+            await firebaseModules.setDoc(bookedSlotsDocRef, { slots: globalBookedSlots }, { merge: true });
+          } catch (error) {
+            console.error("Firebase booking save failed:", error);
+            firebaseReady = false;
+          }
         }
+
+        form.submit();
       }
     });
   }
