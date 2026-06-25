@@ -1,84 +1,84 @@
-// ==========================================
-// 1. FIREBASE SETUP
-// ==========================================
-const firebaseConfig = {
-  apiKey: "AIzaSyDXeGxGSOwIIw-IQjUCCBXzaBMckeUh64c",
-  authDomain: "green-cut-lawn-care.firebaseapp.com",
-  projectId: "green-cut-lawn-care",
-  storageBucket: "green-cut-lawn-care.firebasestorage.app",
-  messagingSenderId: "324723829626",
-  appId: "1:324723829626:web:26e5c09726f27826e744c3",
-  measurementId: "G-JE2ZX4NC5S"
-};
-
-let db = null;
-let bookedSlotsDocRef = null;
-let firebaseReady = false;
-let firebaseError = null;
-
-async function initializeFirebase() {
-  try {
-    const [{ initializeApp }, { getFirestore, doc, setDoc, onSnapshot }] = await Promise.all([
-      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js")
-    ]);
-
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    bookedSlotsDocRef = doc(db, "bookings", "unavailableSlots");
-    firebaseReady = true;
-
-    return { setDoc, onSnapshot };
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
-    firebaseError = error;
-    return null;
-  }
-}
-
-const firebaseInitPromise = initializeFirebase();
-const STORAGE_KEY = "greenCutBookedSlots";
-let globalBookedSlots = [];
-
-// ==========================================
-// 2. BOOKING LOGIC
-// ==========================================
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   const buttons = document.querySelectorAll(".card button");
   const cartItems = document.getElementById("cartItems");
   const totalDisplay = document.querySelector(".total");
+  const form = document.querySelector(".form-box form");
 
+  const storageKey = "greenCutAppointments";
+  let selectedAppointments = [];
   let total = 0;
 
+  function saveAppointments() {
+    localStorage.setItem(storageKey, JSON.stringify(selectedAppointments));
+  }
+
+  function loadAppointments() {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        selectedAppointments = JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error("Could not load saved appointments:", error);
+      selectedAppointments = [];
+    }
+  }
+
   function updateTotal() {
+    total = selectedAppointments.reduce((sum, item) => sum + item.price, 0);
     if (totalDisplay) {
       totalDisplay.textContent = `Total: $${total}`;
     }
   }
 
-  function loadLocalBookedSlots() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        globalBookedSlots = JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error("Could not read saved bookings:", error);
-      globalBookedSlots = [];
-    }
-  }
+  function renderCart() {
+    if (!cartItems) return;
 
-  function saveLocalBookedSlots() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(globalBookedSlots));
+    cartItems.innerHTML = "";
+
+    if (selectedAppointments.length === 0) {
+      const emptyItem = document.createElement("li");
+      emptyItem.textContent = "No appointments selected yet.";
+      cartItems.appendChild(emptyItem);
+    } else {
+      selectedAppointments.forEach((item) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span>${item.title} - $${item.price}</span>`;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove";
+        removeBtn.style.marginLeft = "10px";
+        removeBtn.style.background = "#c62828";
+        removeBtn.style.color = "white";
+        removeBtn.style.border = "none";
+        removeBtn.style.padding = "4px 8px";
+        removeBtn.style.cursor = "pointer";
+        removeBtn.style.borderRadius = "5px";
+
+        removeBtn.addEventListener("click", () => {
+          selectedAppointments = selectedAppointments.filter((entry) => entry.title !== item.title);
+          saveAppointments();
+          renderCart();
+          updateButtonStates();
+        });
+
+        li.appendChild(removeBtn);
+        cartItems.appendChild(li);
+      });
+    }
+
+    updateTotal();
+    updateHiddenFields();
   }
 
   function updateButtonStates() {
     buttons.forEach((button) => {
-      const card = button.parentElement;
+      const card = button.closest(".card");
       const title = card?.querySelector("h3")?.textContent?.trim() || "";
+      const added = selectedAppointments.some((entry) => entry.title === title);
 
-      if (globalBookedSlots.includes(title)) {
-        button.textContent = "Booked Out";
+      if (added) {
+        button.textContent = "Added";
         button.disabled = true;
         button.style.background = "#555";
         button.style.cursor = "not-allowed";
@@ -91,133 +91,44 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  loadLocalBookedSlots();
-  updateButtonStates();
+  function updateHiddenFields() {
+    const appointmentsField = document.getElementById("appointmentsField");
+    const totalField = document.getElementById("totalField");
 
-  firebaseInitPromise.then((firebaseModules) => {
-    if (firebaseModules && bookedSlotsDocRef) {
-      const { onSnapshot } = firebaseModules;
-      onSnapshot(
-        bookedSlotsDocRef,
-        (snapshot) => {
-          const remoteSlots = snapshot.exists() ? (snapshot.data().slots || []) : [];
-          globalBookedSlots = [...new Set([...globalBookedSlots, ...remoteSlots])];
-          saveLocalBookedSlots();
-          updateButtonStates();
-        },
-        (error) => {
-          console.error("Firestore listener failed:", error);
-          firebaseReady = false;
-          updateButtonStates();
-        }
-      );
+    if (appointmentsField) {
+      appointmentsField.value = selectedAppointments.map((item) => `${item.title} - $${item.price}`).join(" | ");
     }
-  });
+
+    if (totalField) {
+      totalField.value = `$${total}`;
+    }
+  }
+
+  loadAppointments();
+  updateButtonStates();
+  renderCart();
 
   buttons.forEach((button) => {
-    button.addEventListener("click", async function () {
-      const card = button.parentElement;
+    button.addEventListener("click", () => {
+      const card = button.closest(".card");
       const title = card?.querySelector("h3")?.textContent?.trim() || "";
       const priceText = card?.querySelector(".price")?.textContent || "$0";
-      const price = parseFloat(priceText.replace("$", ""));
+      const price = Number(priceText.replace("$", ""));
 
-      if (!title) return;
-
-      if (globalBookedSlots.includes(title)) {
+      if (!title || selectedAppointments.some((entry) => entry.title === title)) {
         return;
       }
 
-      const li = document.createElement("li");
-      const text = document.createElement("span");
-      text.textContent = `${title} - $${price}`;
-
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "Remove";
-      removeBtn.style.marginLeft = "10px";
-      removeBtn.style.background = "#c62828";
-      removeBtn.style.color = "white";
-      removeBtn.style.border = "none";
-      removeBtn.style.padding = "4px 8px";
-      removeBtn.style.cursor = "pointer";
-      removeBtn.style.borderRadius = "5px";
-
-      removeBtn.addEventListener("click", function () {
-        li.remove();
-        total -= price;
-        updateTotal();
-      });
-
-      li.appendChild(text);
-      li.appendChild(removeBtn);
-      cartItems.appendChild(li);
-
-      total += price;
-      updateTotal();
-
-      globalBookedSlots.push(title);
-      saveLocalBookedSlots();
+      selectedAppointments.push({ title, price });
+      saveAppointments();
+      renderCart();
       updateButtonStates();
-
-      const firebaseModules = await firebaseInitPromise;
-      if (firebaseModules && bookedSlotsDocRef) {
-        try {
-          await firebaseModules.setDoc(bookedSlotsDocRef, { slots: [...new Set(globalBookedSlots)] }, { merge: true });
-        } catch (error) {
-          console.error("Firebase save failed:", error);
-          firebaseReady = false;
-          updateButtonStates();
-        }
-      }
     });
   });
 
-  updateTotal();
-
-  const form = document.querySelector(".form-box form");
-
   if (form) {
-    form.addEventListener("submit", async function (event) {
-      const items = document.querySelectorAll("#cartItems li");
-      const appointments = [];
-
-      items.forEach((item) => {
-        const span = item.querySelector("span");
-        if (span) {
-          appointments.push(span.textContent.trim());
-        }
-      });
-
-      const appointmentsField = document.getElementById("appointmentsField");
-      const totalField = document.getElementById("totalField");
-
-      if (appointmentsField) {
-        appointmentsField.value = appointments.join(" | ");
-      }
-
-      if (totalField) {
-        totalField.value = totalDisplay.textContent;
-      }
-
-      if (appointments.length > 0) {
-        event.preventDefault();
-
-        const newBookings = appointments.map((str) => str.split(" - ")[0].trim());
-        globalBookedSlots = [...new Set([...globalBookedSlots, ...newBookings])];
-        saveLocalBookedSlots();
-        updateButtonStates();
-
-        const firebaseModules = await firebaseInitPromise;
-        if (firebaseModules && bookedSlotsDocRef) {
-          try {
-            await firebaseModules.setDoc(bookedSlotsDocRef, { slots: globalBookedSlots }, { merge: true });
-          } catch (error) {
-            console.error("Firebase booking save failed:", error);
-            firebaseReady = false;
-          }
-        }
-
-        form.submit();
-      }
+    form.addEventListener("submit", () => {
+      updateHiddenFields();
     });
   }
 });
